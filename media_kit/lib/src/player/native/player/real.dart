@@ -2322,8 +2322,11 @@ class NativePlayer extends PlatformPlayer {
       final options = <String, String>{
         // Set --vid=no by default to prevent redundant video decoding.
         // [VideoController] internally sets --vid=auto upon attachment to enable video rendering & decoding.
-        if (!test) 'vid': 'no',
+        if (!configuration.externalWindow && !test) 'vid': 'no',
+        if (configuration.externalWindow) 'force-window': 'yes',
+        'osc': configuration.osc ? 'yes' : 'no',
       };
+      options.addEntries(configuration.aditionalLibMpvOptions.entries);
 
       if (Platform.isAndroid &&
           configuration.libass &&
@@ -2417,8 +2420,8 @@ class NativePlayer extends PlatformPlayer {
       // Other properties based on [PlayerConfiguration].
       properties.addAll(
         {
+          'osc': configuration.osc ? 'yes' : 'no',
           if (!configuration.osc) ...{
-            'osc': 'no',
             'osd-level': '0',
           },
           'title': configuration.title,

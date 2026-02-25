@@ -447,6 +447,16 @@ class PlayerConfiguration {
   /// Default: `false`.
   final bool osc;
 
+  /// Enables external window for supported backends.
+  ///
+  /// Default: `false`.
+  final bool externalWindow;
+
+  /// Additional options passed to libmpv.
+  ///
+  /// Default: `{}`.
+  final Map<String, String> aditionalLibMpvOptions;
+
   /// Enables or disables pitch shift control for native backend.
   ///
   /// Enabling this option may result in de-syncing of audio & video.
@@ -518,6 +528,8 @@ class PlayerConfiguration {
   const PlayerConfiguration({
     this.vo = 'null',
     this.osc = false,
+    this.externalWindow = false,
+    this.aditionalLibMpvOptions = const {},
     this.pitch = false,
     this.title = 'package:media_kit',
     this.ready,
