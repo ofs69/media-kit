@@ -39,6 +39,9 @@ class PlayerStream {
   /// Current volume.
   final Stream<double> volume;
 
+  // Wherer the player is seeking.
+  final Stream<bool> seeking;
+
   /// Current playback rate.
   final Stream<double> rate;
 
@@ -107,6 +110,7 @@ class PlayerStream {
     this.position,
     this.duration,
     this.volume,
+    this.seeking,
     this.rate,
     this.pitch,
     this.buffering,

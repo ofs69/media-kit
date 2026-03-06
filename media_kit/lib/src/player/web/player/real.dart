@@ -170,6 +170,14 @@ class WebPlayer extends PlatformPlayer {
           }
         });
       });
+      element.onSeeking.listen((_) {
+        state = state.copyWith(seeking: true);
+        seekingController.add(true);
+      });
+      element.onSeeked.listen((_) {
+        state = state.copyWith(seeking: false);
+        seekingController.add(false);
+      });
       element.onDurationChange.listen((_) {
         lock.synchronized(() async {
           // PlayerState.state.duration & PlayerState.stream.duration

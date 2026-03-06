@@ -1571,6 +1571,14 @@ class NativePlayer extends PlatformPlayer {
           positionController.add(position);
         }
       }
+      if (prop.ref.name.cast<Utf8>().toDartString() == 'seeking' &&
+          prop.ref.format == generated.mpv_format.MPV_FORMAT_FLAG) {
+        final seeking = prop.ref.data.cast<Int64>().value > 0;
+        state = state.copyWith(seeking: seeking);
+        if (!seekingController.isClosed) {
+          seekingController.add(seeking);
+        }
+      }
       if (prop.ref.name.cast<Utf8>().toDartString() == 'duration' &&
           prop.ref.format == generated.mpv_format.MPV_FORMAT_DOUBLE) {
         final duration = Duration(
@@ -2461,6 +2469,7 @@ class NativePlayer extends PlatformPlayer {
       <String, int>{
         'pause': generated.mpv_format.MPV_FORMAT_FLAG,
         'time-pos': generated.mpv_format.MPV_FORMAT_DOUBLE,
+        'seeking': generated.mpv_format.MPV_FORMAT_FLAG,
         'duration': generated.mpv_format.MPV_FORMAT_DOUBLE,
         'playlist-playing-pos': generated.mpv_format.MPV_FORMAT_INT64,
         'volume': generated.mpv_format.MPV_FORMAT_DOUBLE,

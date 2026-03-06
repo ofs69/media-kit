@@ -61,6 +61,9 @@ abstract class PlatformPlayer {
     volumeController.stream.distinct(
       (previous, current) => previous == current,
     ),
+    seekingController.stream.distinct(
+      (previous, current) => previous == current,
+    ),
     rateController.stream.distinct(
       (previous, current) => previous == current,
     ),
@@ -127,6 +130,7 @@ abstract class PlatformPlayer {
         positionController.close(),
         durationController.close(),
         volumeController.close(),
+        seekingController.close(),
         rateController.close(),
         pitchController.close(),
         bufferingController.close(),
@@ -323,6 +327,10 @@ abstract class PlatformPlayer {
 
   @protected
   final StreamController<double> volumeController =
+      StreamController.broadcast();
+
+  @protected
+  final StreamController<bool> seekingController =
       StreamController.broadcast();
 
   @protected

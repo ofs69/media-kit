@@ -38,6 +38,9 @@ class PlayerState {
   /// Current volume.
   final double volume;
 
+  // Wherer the player is seeking.
+  final bool seeking;
+
   /// Current playback rate.
   final double rate;
 
@@ -103,6 +106,7 @@ class PlayerState {
     this.rate = 1.0,
     this.pitch = 1.0,
     this.buffering = false,
+    this.seeking = false,
     this.buffer = Duration.zero,
     this.bufferingPercentage = 0.0,
     this.playlistMode = PlaylistMode.none,
@@ -126,6 +130,7 @@ class PlayerState {
     Duration? position,
     Duration? duration,
     double? volume,
+    bool? seeking,
     double? rate,
     double? pitch,
     bool? buffering,
@@ -151,6 +156,7 @@ class PlayerState {
       position: position ?? this.position,
       duration: duration ?? this.duration,
       volume: volume ?? this.volume,
+      seeking: seeking ?? this.seeking,
       rate: rate ?? this.rate,
       pitch: pitch ?? this.pitch,
       buffering: buffering ?? this.buffering,
