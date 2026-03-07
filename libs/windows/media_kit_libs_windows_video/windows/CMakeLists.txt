@@ -206,11 +206,11 @@ target_link_libraries(
 set(
   media_kit_libs_windows_video_bundled_libraries
   "${LIBMPV_SRC}/libmpv-2.dll"
-  "${ANGLE_SRC}/d3dcompiler_47.dll"
+  # "${ANGLE_SRC}/d3dcompiler_47.dll"
   "${ANGLE_SRC}/libEGL.dll"
   "${ANGLE_SRC}/libGLESv2.dll"
-  "${ANGLE_SRC}/vk_swiftshader.dll"
-  "${ANGLE_SRC}/vulkan-1.dll"
-  "${ANGLE_SRC}/zlib.dll"
+  # "${ANGLE_SRC}/vk_swiftshader.dll"
+  # "${ANGLE_SRC}/vulkan-1.dll"
+  # "${ANGLE_SRC}/zlib.dll"
   PARENT_SCOPE
 )

@@ -2405,25 +2405,25 @@ class NativePlayer extends PlatformPlayer {
         'network-timeout': '5',
         // https://github.com/mpv-player/mpv/commit/703f1588803eaa428e09c0e5547b26c0fff476a7
         // https://github.com/mpv-android/mpv-android/commit/9e5c3d8a630290fc41edb8b03aeafa3bc4c45955
-        'scale': 'bilinear',
-        'dscale': 'bilinear',
-        'dither': 'no',
+        // 'scale': 'bilinear',
+        // 'dscale': 'bilinear',
+        // 'dither': 'no',
         'cache': 'yes',
         'cache-on-disk': 'yes',
-        'hr-seek': 'yes',
-        'hr-seek-framedrop': 'no',
-        'correct-downscaling': 'no',
-        'linear-downscaling': 'no',
-        'sigmoid-upscaling': 'no',
-        'hdr-compute-peak': 'no',
+        // 'hr-seek': 'yes',
+        // 'hr-seek-framedrop': 'no',
+        // 'correct-downscaling': 'no',
+        // 'linear-downscaling': 'no',
+        // 'sigmoid-upscaling': 'no',
+        // 'hdr-compute-peak': 'no',
         if (AndroidHelper.isPhysicalDevice || AndroidHelper.APILevel > 25)
           'ao': 'opensles'
         // Disable audio output on older Android emulators with API Level < 25.
         // OpenSL ES audio output seems to be broken on some of these.
         else if (AndroidHelper.isEmulator && AndroidHelper.APILevel <= 25)
           'ao': 'null',
-        'subs-fallback': 'yes',
-        'subs-with-matching-audio': 'yes',
+        // 'subs-fallback': 'yes',
+        // 'subs-with-matching-audio': 'yes',
       };
       // Other properties based on [PlayerConfiguration].
       properties.addAll(
@@ -2436,15 +2436,15 @@ class NativePlayer extends PlatformPlayer {
           'demuxer-max-bytes': configuration.bufferSize.toString(),
           'demuxer-max-back-bytes': configuration.bufferSize.toString(),
           if (configuration.vo != null) 'vo': '${configuration.vo}',
-          'demuxer-lavf-o': [
-            'seg_max_retry=5',
-            'strict=experimental',
-            'allowed_extensions=ALL',
-            'protocol_whitelist=[${configuration.protocolWhitelist.join(',')}]'
-          ].join(','),
-          'sub-ass': configuration.libass ? 'yes' : 'no',
-          'sub-visibility': configuration.libass ? 'yes' : 'no',
-          'secondary-sub-visibility': configuration.libass ? 'yes' : 'no',
+          // 'demuxer-lavf-o': [
+          //   'seg_max_retry=5',
+          //   'strict=experimental',
+          //   'allowed_extensions=ALL',
+          //   'protocol_whitelist=[${configuration.protocolWhitelist.join(',')}]'
+          // ].join(','),
+          // 'sub-ass': configuration.libass ? 'yes' : 'no',
+          // 'sub-visibility': configuration.libass ? 'yes' : 'no',
+          // 'secondary-sub-visibility': configuration.libass ? 'yes' : 'no',
         },
       );
 
