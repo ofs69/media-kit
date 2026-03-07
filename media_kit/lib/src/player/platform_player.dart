@@ -55,9 +55,8 @@ abstract class PlatformPlayer {
     positionController.stream.distinct(
       (previous, current) => previous == current,
     ),
-    durationController.stream.distinct(
-      (previous, current) => previous == current,
-    ),
+    /* DURATION STREAM SHOULD NOT BE DISTINCT */
+    durationController.stream,
     volumeController.stream.distinct(
       (previous, current) => previous == current,
     ),
@@ -330,8 +329,7 @@ abstract class PlatformPlayer {
       StreamController.broadcast();
 
   @protected
-  final StreamController<bool> seekingController =
-      StreamController.broadcast();
+  final StreamController<bool> seekingController = StreamController.broadcast();
 
   @protected
   final StreamController<double> rateController =
