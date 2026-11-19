@@ -14,7 +14,12 @@ set(PLUGIN_NAME "media_kit_video_plugin")
 
 # This is shipped as part of package:media_kit_libs_*** package(s).
 # Must be built before this target.
-set(LIBMPV_SRC "${CMAKE_BINARY_DIR}/libmpv")
+if(DEFINED MEDIA_KIT_LIBMPV_DIR)
+  set(LIBMPV_SRC "${MEDIA_KIT_LIBMPV_DIR}")
+else()
+  # Also support the existing audio-only and older library packages.
+  set(LIBMPV_SRC "${CMAKE_BINARY_DIR}/libmpv")
+endif()
 set(ANGLE_SRC "${CMAKE_BINARY_DIR}/ANGLE")
 
 # Deal with MSVC incompatiblity
@@ -22,6 +27,7 @@ add_compile_definitions(_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
 
 if(MEDIA_KIT_LIBS_AVAILABLE)
   include_directories(
+    "${LIBMPV_SRC}/include/mpv"
     "${LIBMPV_SRC}/include"
     "${ANGLE_SRC}/include"
   )

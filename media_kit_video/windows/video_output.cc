@@ -45,7 +45,6 @@ VideoOutput::VideoOutput(int64_t handle,
             static_cast<int32_t>(width_.value_or(1)),
             static_cast<int32_t>(height_.value_or(1)));
         surface_manager_->MakeCurrent(true);
-        Resize(width_.value_or(1), height_.value_or(1));
         mpv_opengl_init_params gl_init_params{
             [](auto, auto name) {
               return reinterpret_cast<void*>(eglGetProcAddress(name));
@@ -59,6 +58,7 @@ VideoOutput::VideoOutput(int64_t handle,
         };
         // Create render context.
         if (mpv_render_context_create(&render_context_, handle_, params) == 0) {
+          Resize(width_.value_or(1), height_.value_or(1));
           mpv_render_context_set_update_callback(
               render_context_,
               [](void* context) {
@@ -81,6 +81,7 @@ VideoOutput::VideoOutput(int64_t handle,
       }
     }
     if (!is_hardware_acceleration_enabled) {
+      surface_manager_.reset();
       std::cout << "media_kit: VideoOutput: Using S/W rendering." << std::endl;
       // Allocate a "large enough" buffer ahead of time.
       pixel_buffer_ =
@@ -126,7 +127,7 @@ VideoOutput::~VideoOutput() {
             std::lock_guard<std::mutex> lock(textures_mutex_);
             texture_variants_.clear();
             // H/W
-            textures_.clear();
+            acquired_texture_.Reset();
             // S/W
             pixel_buffer_textures_.clear();
             // Free (call destructor) |ANGLESurfaceManager| through the thread
@@ -207,43 +208,36 @@ void VideoOutput::SetTextureUpdateCallback(
 void VideoOutput::SetSize(std::optional<int64_t> width,
                           std::optional<int64_t> height) {
   thread_pool_ref_->Post([&, width, height]() {
-    if (width.has_value()) {
-      // H/W
-      if (surface_manager_ != nullptr) {
-        width_ = width.value();
+    width_ = width;
+    height_ = height;
+    if (pixel_buffer_ && width && height && *width > 0 && *height > 0) {
+      const auto scale = std::min<double>(
+          {1.0, SW_RENDERING_MAX_WIDTH / static_cast<double>(*width),
+           SW_RENDERING_MAX_HEIGHT / static_cast<double>(*height)});
+      width_ = std::max<int64_t>(1, static_cast<int64_t>(*width * scale));
+      height_ = std::max<int64_t>(1, static_cast<int64_t>(*height * scale));
+    } else if (pixel_buffer_) {
+      if (width) {
+        width_ = std::clamp<int64_t>(*width, 0, SW_RENDERING_MAX_WIDTH);
       }
-      // S/W
-      if (pixel_buffer_ != nullptr) {
-        // Limit width if software rendering is being used.
-        width_ = std::clamp(width.value(), static_cast<int64_t>(0),
-                            static_cast<int64_t>(SW_RENDERING_MAX_WIDTH));
+      if (height) {
+        height_ = std::clamp<int64_t>(*height, 0, SW_RENDERING_MAX_HEIGHT);
       }
-    } else {
-      width_ = std::nullopt;
     }
-    if (height.has_value()) {
-      // H/W
-      if (surface_manager_ != nullptr) {
-        height_ = height.value();
-      }
-      // S/W
-      if (pixel_buffer_ != nullptr) {
-        // Limit width if software rendering is being used.
-        height_ = std::clamp(height.value(), static_cast<int64_t>(0),
-                             static_cast<int64_t>(SW_RENDERING_MAX_HEIGHT));
-      }
-    } else {
-      height_ = std::nullopt;
+    // A paused player may never issue another frame request. Redraw its
+    // current frame into the new texture on the same render worker.
+    if (CheckAndResize()) {
+      Render();
     }
   });
 }
 
-void VideoOutput::CheckAndResize() {
+bool VideoOutput::CheckAndResize() {
   // Check if a new texture with different dimensions is needed.
   auto required_width = GetVideoWidth(), required_height = GetVideoHeight();
   if (required_width < 1 || required_height < 1) {
     // Invalid.
-    return;
+    return false;
   }
   int64_t current_width = -1, current_height = -1;
   if (surface_manager_ != nullptr) {
@@ -260,13 +254,45 @@ void VideoOutput::CheckAndResize() {
   assert(current_height > 0);
   if (required_width == current_width && required_height == current_height) {
     // No creation of new texture required.
-    return;
+    return false;
   }
   Resize(required_width, required_height);
+  return true;
 }
 
 void VideoOutput::Resize(int64_t required_width, int64_t required_height) {
   std::cout << required_width << " " << required_height << std::endl;
+  if (surface_manager_ != nullptr) {
+    {
+      std::lock_guard<std::mutex> lock(textures_mutex_);
+      surface_manager_->SetSize(static_cast<int32_t>(required_width),
+                                static_cast<int32_t>(required_height));
+    }
+    // Flutter reimports a GPU surface when its shared handle changes. Keep
+    // the texture ID stable so the current widget can draw throughout resize.
+    if (!texture_id_) {
+      auto texture_variant = std::make_unique<flutter::TextureVariant>(
+          flutter::GpuSurfaceTexture(kFlutterDesktopGpuSurfaceTypeDxgiSharedHandle,
+              [this](auto, auto) {
+                std::lock_guard<std::mutex> lock(textures_mutex_);
+                surface_manager_->Read();
+                acquired_texture_ = surface_manager_->texture();
+                acquired_surface_.struct_size = sizeof(acquired_surface_);
+                acquired_surface_.handle = surface_manager_->handle();
+                acquired_surface_.width = acquired_surface_.visible_width =
+                    surface_manager_->width();
+                acquired_surface_.height = acquired_surface_.visible_height =
+                    surface_manager_->height();
+                acquired_surface_.format = kFlutterDesktopPixelFormatBGRA8888;
+                return &acquired_surface_;
+              }));
+      texture_id_ =
+          registrar_->texture_registrar()->RegisterTexture(texture_variant.get());
+      texture_variants_.emplace(texture_id_, std::move(texture_variant));
+    }
+    texture_update_callback_(texture_id_, required_width, required_height);
+    return;
+  }
   // Unregister previously registered texture & delete underlying objects.
   if (texture_id_) {
     registrar_->texture_registrar()->UnregisterTexture(
@@ -281,10 +307,6 @@ void VideoOutput::Resize(int64_t required_width, int64_t required_height) {
             if (texture_variants_.find(id) != texture_variants_.end()) {
               texture_variants_.erase(id);
             }
-            // H/W
-            if (textures_.find(id) != textures_.end()) {
-              textures_.erase(id);
-            }
             // S/W
             if (pixel_buffer_textures_.find(id) !=
                 pixel_buffer_textures_.end()) {
@@ -293,43 +315,6 @@ void VideoOutput::Resize(int64_t required_width, int64_t required_height) {
           }
         });
     texture_id_ = 0;
-  }
-  // H/W
-  if (surface_manager_ != nullptr) {
-    // Destroy internal ID3D11Texture2D & EGLSurface & create new with updated
-    // dimensions while preserving previous EGLDisplay & EGLContext.
-    surface_manager_->SetSize(static_cast<int32_t>(required_width),
-                              static_cast<int32_t>(required_height));
-    auto texture = std::make_unique<FlutterDesktopGpuSurfaceDescriptor>();
-    texture->struct_size = sizeof(FlutterDesktopGpuSurfaceDescriptor);
-    texture->handle = surface_manager_->handle();
-    texture->width = texture->visible_width = surface_manager_->width();
-    texture->height = texture->visible_height = surface_manager_->height();
-    texture->release_context = nullptr;
-    texture->release_callback = [](void*) {};
-    texture->format = kFlutterDesktopPixelFormatBGRA8888;
-    auto texture_variant =
-        std::make_unique<flutter::TextureVariant>(flutter::GpuSurfaceTexture(
-            kFlutterDesktopGpuSurfaceTypeDxgiSharedHandle, [&](auto, auto) {
-              std::lock_guard<std::mutex> lock(textures_mutex_);
-              if (texture_id_) {
-                surface_manager_->Read();
-                return textures_.at(texture_id_).get();
-              } else {
-                return (FlutterDesktopGpuSurfaceDescriptor*)nullptr;
-              }
-            }));
-    // Register new texture.
-    texture_id_ =
-        registrar_->texture_registrar()->RegisterTexture(texture_variant.get());
-    std::cout << "media_kit: VideoOutput: Create Texture: " << texture_id_
-              << std::endl;
-    std::lock_guard<std::mutex> lock(textures_mutex_);
-    textures_.emplace(std::make_pair(texture_id_, std::move(texture)));
-    texture_variants_.emplace(
-        std::make_pair(texture_id_, std::move(texture_variant)));
-    // Notify public texture update callback.
-    texture_update_callback_(texture_id_, required_width, required_height);
   }
   // S/W
   if (pixel_buffer_ != nullptr) {

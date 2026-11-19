@@ -40,6 +40,7 @@ class ANGLESurfaceManager {
   const int32_t width() const { return width_; }
   const int32_t height() const { return height_; }
   const HANDLE handle() const { return handle_; }
+  ID3D11Texture2D* texture() const { return d3d_11_texture_2D_.Get(); }
 
   ANGLESurfaceManager(int32_t width, int32_t height);
 

@@ -9,6 +9,7 @@
 #ifndef VIDEO_OUTPUT_H_
 #define VIDEO_OUTPUT_H_
 
+#include <atomic>
 #include <optional>
 
 #include <client.h>
@@ -81,7 +82,7 @@ class VideoOutput {
 
   void Render();
 
-  void CheckAndResize();
+  bool CheckAndResize();
 
   void Resize(int64_t required_width, int64_t required_height);
 
@@ -101,7 +102,7 @@ class VideoOutput {
   // For preventing any asynchronous operations (primarily texture objects
   // deletion after unregister in |Resize|) access this object after
   // destruction.
-  bool destroyed_ = false;
+  std::atomic<bool> destroyed_{false};
 
   std::mutex textures_mutex_ = std::mutex();
 
@@ -111,9 +112,10 @@ class VideoOutput {
   // H/W rendering.
 
   std::unique_ptr<ANGLESurfaceManager> surface_manager_ = nullptr;
-  std::unordered_map<int64_t,
-                     std::unique_ptr<FlutterDesktopGpuSurfaceDescriptor>>
-      textures_ = {};
+  // Flutter's raster thread can still be importing the last shared handle
+  // when the render worker replaces the backing textures during a resize.
+  FlutterDesktopGpuSurfaceDescriptor acquired_surface_{};
+  Microsoft::WRL::ComPtr<ID3D11Texture2D> acquired_texture_;
 
   // S/W rendering.
 

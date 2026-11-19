@@ -97,6 +97,9 @@ class NativeVideoController extends PlatformVideoController {
 
         videoParamsWidth = width;
         videoParamsHeight = height;
+        // Keep the source dimensions for restoring automatic sizing, but a
+        // track change must not replace the caller's explicit output size.
+        if (this.width != null && this.height != null) return;
 
         await _channel.invokeMethod(
           'VideoOutputManager.SetSize',
